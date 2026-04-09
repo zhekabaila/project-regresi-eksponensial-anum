@@ -1,11 +1,12 @@
 """
-Exponential Regression Modeling Module
+Modul Pemodelan Regresi Eksponensial — Analisa Numerik
 
-Implements TWO fitting methods for exponential regression:
-1. Linearization + Least Squares (Method 1)
-2. SciPy Curve Fitting (Method 2, recommended)
+Implementasi DUA metode fitting untuk regresi eksponensial:
+1. Linearisasi + Kuadrat Terkecil (Metode 1, inti Analisa Numerik)
+2. SciPy Curve Fitting (Metode 2, pembanding)
 
-Model form: y = a * e^(b * x)
+Bentuk model: y = C * e^(b * x)
+Dengan C dan b dihitung melalui persamaan normal (least squares method).
 """
 
 import numpy as np
@@ -15,263 +16,283 @@ from typing import Tuple, Dict
 import json
 
 
-def exponential_function(x: np.ndarray, a: float, b: float) -> np.ndarray:
+def fungsi_eksponensial(x: np.ndarray, C: float, b: float) -> np.ndarray:
     """
-    Exponential function: y = a * e^(b * x)
+    Fungsi eksponensial: y = C * e^(b * x)
     
     Args:
-        x (np.ndarray): Independent variable
-        a (float): Amplitude parameter
-        b (float): Decay/growth rate parameter
+        x (np.ndarray): Variabel independen
+        C (float): Parameter amplitudo (konstanta awal)
+        b (float): Parameter laju penurunan/pertumbuhan
         
     Returns:
-        np.ndarray: Predicted values
+        np.ndarray: Nilai prediksi
     """
-    return a * np.exp(b * x)
+    return C * np.exp(b * x)
 
 
-def method1_linearization(X: np.ndarray, Y: np.ndarray) -> Tuple[float, float, np.ndarray]:
+def metode1_linearisasi(X: np.ndarray, Y: np.ndarray) -> Tuple[float, float, np.ndarray]:
     """
-    METHOD 1: Linearization + Least Squares
+    METODE 1: Linearisasi + Persamaan Normal (Inti Analisa Numerik)
     
-    Transform: y = a*e^(bx) → ln(y) = ln(a) + b*x
-    Then apply polyfit(x, ln(y), 1) to get linear regression coefficients.
+    Transformasi: y = C*e^(bx) → ln(y) = ln(C) + b*x
+    Kemudian gunakan polyfit(x, ln(y), 1) untuk mendapatkan koefisien regresi linear.
+    
+    Komponen persamaan normal yang dihitung:
+    - n: jumlah data
+    - Σx: jumlah nilai x
+    - ΣY': jumlah nilai ln(Y)
+    - Σx²: jumlah nilai x kuadrat
+    - ΣxY': jumlah nilai x*ln(Y)
     
     Args:
-        X (np.ndarray): Independent variable (social_media_hours)
-        Y (np.ndarray): Dependent variable (focus_score)
+        X (np.ndarray): Variabel independen (social_media_hours)
+        Y (np.ndarray): Variabel dependen (focus_score)
         
     Returns:
         Tuple[float, float, np.ndarray]:
-            - a: Amplitude parameter
-            - b: Decay rate parameter
-            - Y_pred: Predicted values
+            - C: Parameter amplitudo
+            - b: Parameter laju penurunan
+            - Y_pred: Nilai prediksi
     """
     print("\n" + "=" * 60)
-    print("METHOD 1: LINEARIZATION + LEAST SQUARES")
+    print("METODE 1: LINEARISASI + PERSAMAAN NORMAL")
     print("=" * 60)
     
-    # Transform to linear space
-    ln_Y = np.log(Y)
+    # Transformasi ke ruang linear
+    Y_prime = np.log(Y)  # Y' = ln(Y)
     
-    # Linear regression: ln(y) = ln(a) + b*x
-    coeffs = np.polyfit(X, ln_Y, 1)  # Returns [b, ln(a)]
-    b = coeffs[0]
-    ln_a = coeffs[1]
-    a = np.exp(ln_a)
+    # Regresi linear: ln(y) = ln(C) + b*x
+    koefisien = np.polyfit(X, Y_prime, 1)  # Returns [b, ln(C)]
+    b = koefisien[0]
+    ln_C = koefisien[1]
+    C = np.exp(ln_C)
     
-    # Predict
-    Y_pred = exponential_function(X, a, b)
+    # Hitung komponen persamaan normal (untuk dokumentasi)
+    n = len(X)
+    sum_x = np.sum(X)
+    sum_Yp = np.sum(Y_prime)
+    sum_x2 = np.sum(X**2)
+    sum_xYp = np.sum(X * Y_prime)
     
-    print(f"Persamaan: y = {a:.4f} * e^({b:.6f} * x)")
-    print(f"  a = {a:.4f}")
-    print(f"  b = {b:.6f}")
+    # Prediksi
+    Y_pred = fungsi_eksponensial(X, C, b)
     
-    return a, b, Y_pred
+    print(f"Persamaan: y = {C:.4f} * e^({b:.6f} * x)")
+    print(f"  Parameter C = {C:.4f}")
+    print(f"  Parameter b = {b:.6f}")
+    print(f"\nKomponen Persamaan Normal:")
+    print(f"  n = {n}")
+    print(f"  Σx = {sum_x:.2f}")
+    print(f"  ΣY' = {sum_Yp:.2f}")
+    print(f"  Σx² = {sum_x2:.2f}")
+    print(f"  ΣxY' = {sum_xYp:.2f}")
+    
+    return C, b, Y_pred
 
 
-def method2_scipy_curve_fit(X: np.ndarray, Y: np.ndarray, 
+def metode2_scipy_curve_fit(X: np.ndarray, Y: np.ndarray, 
                              p0: list = None, maxfev: int = 10000) -> Tuple[float, float, np.ndarray]:
     """
-    METHOD 2: SciPy Curve Fitting (Levenberg-Marquardt Algorithm)
+    METODE 2: SciPy Curve Fitting (Algoritma Levenberg-Marquardt)
     
-    More robust optimization using scipy.optimize.curve_fit.
-    Recommended for better convergence and handling edge cases.
+    Optimisasi yang lebih robust menggunakan scipy.optimize.curve_fit.
+    Digunakan sebagai pembanding terhadap Metode 1.
     
     Args:
-        X (np.ndarray): Independent variable
-        Y (np.ndarray): Dependent variable
-        p0 (list): Initial guess [a, b]. Default: [max(Y), -0.1]
-        maxfev (int): Maximum function evaluations (default: 10000)
+        X (np.ndarray): Variabel independen
+        Y (np.ndarray): Variabel dependen
+        p0 (list): Tebakan awal [C, b]. Default: [max(Y), -0.1]
+        maxfev (int): Maksimal evaluasi fungsi (default: 10000)
         
     Returns:
         Tuple[float, float, np.ndarray]:
-            - a: Optimized amplitude parameter
-            - b: Optimized decay rate parameter
-            - Y_pred: Predicted values
+            - C: Parameter amplitudo yang sudah optimal
+            - b: Parameter laju penurunan yang sudah optimal
+            - Y_pred: Nilai prediksi
     """
     print("\n" + "=" * 60)
-    print("METHOD 2: SCIPY CURVE FITTING (LEVENBERG-MARQUARDT)")
+    print("METODE 2: SCIPY CURVE FITTING (LEVENBERG-MARQUARDT)")
     print("=" * 60)
     
-    # Default initial guess
+    # Tebakan awal default
     if p0 is None:
         p0 = [max(Y), -0.1]
     
     try:
         # Curve fitting
-        popt, pcov = curve_fit(exponential_function, X, Y, 
+        popt, pcov = curve_fit(fungsi_eksponensial, X, Y, 
                                p0=p0, maxfev=maxfev)
-        a_opt, b_opt = popt
+        C_opt, b_opt = popt
         
-        # Predict
-        Y_pred = exponential_function(X, a_opt, b_opt)
+        # Prediksi
+        Y_pred = fungsi_eksponensial(X, C_opt, b_opt)
         
-        print(f"Persamaan: y = {a_opt:.4f} * e^({b_opt:.6f} * x)")
-        print(f"  a = {a_opt:.4f}")
-        print(f"  b = {b_opt:.6f}")
-        print(f"Convergence: Success")
+        print(f"Persamaan: y = {C_opt:.4f} * e^({b_opt:.6f} * x)")
+        print(f"  Parameter C = {C_opt:.4f}")
+        print(f"  Parameter b = {b_opt:.6f}")
+        print(f"Konvergensi: Berhasil")
         
-        return a_opt, b_opt, Y_pred
+        return C_opt, b_opt, Y_pred
     
     except RuntimeError as e:
-        print(f"Convergence FAILED: {e}")
-        print(f"Trying with larger maxfev={maxfev*5}...")
-        return method2_scipy_curve_fit(X, Y, p0=p0, maxfev=maxfev*5)
+        print(f"Konvergensi GAGAL: {e}")
+        print(f"Mencoba dengan maxfev={maxfev*5}...")
+        return metode2_scipy_curve_fit(X, Y, p0=p0, maxfev=maxfev*5)
 
 
-def evaluate_model(Y_true: np.ndarray, Y_pred: np.ndarray, 
-                   model_name: str = "") -> Dict[str, float]:
+def evaluasi_model(Y_aktual: np.ndarray, Y_prediksi: np.ndarray, 
+                   nama_model: str = "") -> Dict[str, float]:
     """
-    Evaluate model using multiple metrics.
+    Evaluasi model menggunakan beberapa metrik.
     
-    Metrics:
+    Metrik yang dihitung:
     - MAE: Mean Absolute Error
     - MSE: Mean Squared Error
-    - RMSE: Root Mean Squared Error
-    - R²: Coefficient of Determination
+    - RMSE: Root Mean Squared Error (Galat RMS) — UTAMA untuk Analisa Numerik
+    - R²: Koefisien Determinasi
     
     Args:
-        Y_true (np.ndarray): Actual values
-        Y_pred (np.ndarray): Predicted values
-        model_name (str): Name of the model (for display)
+        Y_aktual (np.ndarray): Nilai aktual
+        Y_prediksi (np.ndarray): Nilai prediksi
+        nama_model (str): Nama model (untuk display)
         
     Returns:
-        Dict[str, float]: Dictionary of metrics
+        Dict[str, float]: Dictionary metrik evaluasi
     """
-    mae = mean_absolute_error(Y_true, Y_pred)
-    mse = mean_squared_error(Y_true, Y_pred)
-    rmse = np.sqrt(mse)
-    r2 = r2_score(Y_true, Y_pred)
+    mae = mean_absolute_error(Y_aktual, Y_prediksi)
+    mse = mean_squared_error(Y_aktual, Y_prediksi)
+    galat_RMS = np.sqrt(mse)  # RMSE = Galat RMS
+    r2 = r2_score(Y_aktual, Y_prediksi)
     
-    metrics = {
+    metrik = {
         'MAE': mae,
         'MSE': mse,
-        'RMSE': rmse,
-        'R²': r2
+        'RMSE': galat_RMS,
+        'R2': r2
     }
     
-    print(f"\n{model_name}")
+    print(f"\n{nama_model}")
     print(f"  MAE  = {mae:.6f}")
     print(f"  MSE  = {mse:.6f}")
-    print(f"  RMSE = {rmse:.6f}")
+    print(f"  RMSE (Galat RMS) = {galat_RMS:.6f}")
     print(f"  R²   = {r2:.6f}")
     
-    # Assessment
+    # Penilaian
     if r2 >= 0.65:
-        print(f"  ✓ R² is excellent (≥ 0.65)")
+        print(f"  ✓ R² sangat baik (≥ 0.65)")
     elif r2 >= 0.40:
-        print(f"  ✓ R² is acceptable (≥ 0.40)")
+        print(f"  ✓ R² dapat diterima (≥ 0.40)")
     else:
-        print(f"  ⚠ R² is below threshold (< 0.40) — consider model refinement")
+        print(f"  ⚠ R² di bawah threshold (< 0.40) — pertimbangkan penyempurnaan model")
     
-    return metrics
+    return metrik
 
 
-def compare_methods(X: np.ndarray, Y: np.ndarray) -> Dict:
+def bandingkan_metode(X: np.ndarray, Y: np.ndarray) -> Dict:
     """
-    Run BOTH fitting methods and compare results.
+    Jalankan KEDUA metode fitting dan bandingkan hasil.
     
     Args:
-        X (np.ndarray): Independent variable
-        Y (np.ndarray): Dependent variable
+        X (np.ndarray): Variabel independen
+        Y (np.ndarray): Variabel dependen
         
     Returns:
-        Dict: Comparison results with all parameters and metrics
+        Dict: Hasil perbandingan dengan semua parameter dan metrik
     """
     print("\n" + "=" * 70)
-    print("FITTING EXPONENTIAL REGRESSION: DUAL METHOD APPROACH")
+    print("FITTING REGRESI EKSPONENSIAL: PENDEKATAN DUAL METHOD")
     print("=" * 70)
     
-    # Method 1
-    a1, b1, Y_pred1 = method1_linearization(X, Y)
-    metrics1 = evaluate_model(Y, Y_pred1, model_name="Method 1 Metrics")
+    # Metode 1
+    C1, b1, Y_pred1 = metode1_linearisasi(X, Y)
+    metrik1 = evaluasi_model(Y, Y_pred1, nama_model="Metrik Metode 1")
     
-    # Method 2
-    a2, b2, Y_pred2 = method2_scipy_curve_fit(X, Y)
-    metrics2 = evaluate_model(Y, Y_pred2, model_name="Method 2 Metrics")
+    # Metode 2
+    C2, b2, Y_pred2 = metode2_scipy_curve_fit(X, Y)
+    metrik2 = evaluasi_model(Y, Y_pred2, nama_model="Metrik Metode 2")
     
-    # Comparison table
-    print("\n" + "=" * 70)
-    print("COMPARISON TABLE")
-    print("=" * 70)
-    print(f"{'Metric':<15} {'Method 1 (Linearization)':<30} {'Method 2 (SciPy)':<30}")
+    # Tabel perbandingan
+    print("\n" + "=" * 75)
+    print("TABEL PERBANDINGAN METODE")
+    print("=" * 75)
+    print(f"{'Metrik':<15} {'Metode 1 (Linearisasi)':<30} {'Metode 2 (SciPy)':<30}")
     print("-" * 75)
-    print(f"{'a':<15} {a1:<30.6f} {a2:<30.6f}")
-    print(f"{'b':<15} {b1:<30.6f} {b2:<30.6f}")
-    print(f"{'MAE':<15} {metrics1['MAE']:<30.6f} {metrics2['MAE']:<30.6f}")
-    print(f"{'RMSE':<15} {metrics1['RMSE']:<30.6f} {metrics2['RMSE']:<30.6f}")
-    print(f"{'R²':<15} {metrics1['R²']:<30.6f} {metrics2['R²']:<30.6f}")
+    print(f"{'Parameter C':<15} {C1:<30.6f} {C2:<30.6f}")
+    print(f"{'Parameter b':<15} {b1:<30.6f} {b2:<30.6f}")
+    print(f"{'MAE':<15} {metrik1['MAE']:<30.6f} {metrik2['MAE']:<30.6f}")
+    print(f"{'RMSE':<15} {metrik1['RMSE']:<30.6f} {metrik2['RMSE']:<30.6f}")
+    print(f"{'R²':<15} {metrik1['R2']:<30.6f} {metrik2['R2']:<30.6f}")
     print("=" * 75)
     
-    # Determine best method
-    best_method = "Method 2 (SciPy)" if metrics2['R²'] >= metrics1['R²'] else "Method 1"
-    print(f"\n✓ RECOMMENDED: {best_method}")
+    # Tentukan metode terbaik
+    metode_terbaik = "Metode 2 (SciPy)" if metrik2['R2'] >= metrik1['R2'] else "Metode 1"
+    print(f"\n✓ DIREKOMENDASIKAN: {metode_terbaik}")
     
     return {
-        'method1': {
-            'a': a1, 'b': b1, 'Y_pred': Y_pred1,
-            'metrics': metrics1
+        'metode1': {
+            'C': C1, 'b': b1, 'Y_pred': Y_pred1,
+            'metrik': metrik1
         },
-        'method2': {
-            'a': a2, 'b': b2, 'Y_pred': Y_pred2,
-            'metrics': metrics2
+        'metode2': {
+            'C': C2, 'b': b2, 'Y_pred': Y_pred2,
+            'metrik': metrik2
         }
     }
 
 
-def calculate_critical_point(a: float, b: float, threshold: float = 50) -> float:
+def hitung_titik_kritis(C: float, b: float, threshold: float = 50) -> float:
     """
-    Calculate critical social_media_hours where focus_score reaches threshold.
+    Hitung jam media sosial kritis dimana focus_score mencapai threshold.
     
-    Solve: threshold = a * e^(b * x) for x
-    x = ln(threshold / a) / b
+    Selesaikan: threshold = C * e^(b * x) untuk x
+    x = ln(threshold / C) / b
     
     Args:
-        a (float): Amplitude parameter
-        b (float): Decay rate parameter
-        threshold (float): Target focus_score value (default: 50)
+        C (float): Parameter amplitudo
+        b (float): Parameter laju penurunan
+        threshold (float): Nilai target focus_score (default: 50)
         
     Returns:
-        float: Critical x value (social_media_hours)
+        float: Nilai x kritis (social_media_hours)
     """
-    x_critical = np.log(threshold / a) / b
-    return x_critical
+    x_kritis = np.log(threshold / C) / b
+    return x_kritis
 
 
-def save_model_results(filepath: str, a: float, b: float, 
-                       metrics: Dict[str, float], dataset_size: int):
+def simpan_hasil_model(filepath: str, C: float, b: float, 
+                       metrik: Dict[str, float], jumlah_data: int):
     """
-    Save model results to text file.
+    Simpan hasil model ke file teks.
     
     Args:
-        filepath (str): Output file path
-        a (float): Parameter a
+        filepath (str): Path file output
+        C (float): Parameter C
         b (float): Parameter b
-        metrics (Dict): Evaluation metrics
-        dataset_size (int): Number of samples used
+        metrik (Dict): Metrik evaluasi
+        jumlah_data (int): Jumlah sampel yang digunakan
     """
     with open(filepath, 'w') as f:
         f.write("=" * 60 + "\n")
-        f.write("EXPONENTIAL REGRESSION MODEL RESULTS\n")
+        f.write("HASIL MODEL REGRESI EKSPONENSIAL\n")
         f.write("=" * 60 + "\n\n")
         
-        f.write("MODEL EQUATION\n")
+        f.write("PERSAMAAN MODEL\n")
         f.write("-" * 60 + "\n")
-        f.write(f"focus_score = {a:.6f} * e^({b:.6f} * social_media_hours)\n\n")
+        f.write(f"focus_score = {C:.6f} * e^({b:.6f} * social_media_hours)\n\n")
         
-        f.write("PARAMETERS\n")
+        f.write("PARAMETER\n")
         f.write("-" * 60 + "\n")
-        f.write(f"a = {a:.6f}\n")
+        f.write(f"C = {C:.6f}\n")
         f.write(f"b = {b:.6f}\n")
-        f.write(f"Dataset size = {dataset_size}\n\n")
+        f.write(f"Jumlah data = {jumlah_data}\n\n")
         
-        f.write("EVALUATION METRICS\n")
+        f.write("METRIK EVALUASI\n")
         f.write("-" * 60 + "\n")
-        for metric_name, metric_value in metrics.items():
-            f.write(f"{metric_name:<8} = {metric_value:.6f}\n")
+        for nama_metrik, nilai_metrik in metrik.items():
+            f.write(f"{nama_metrik:<8} = {nilai_metrik:.6f}\n")
         
         f.write("\n" + "=" * 60 + "\n")
-        f.write(f"Generated: April 2026\n")
+        f.write(f"Dihasilkan: April 2026\n")
     
-    print(f"\nResults saved to {filepath}")
+    print(f"\nHasil disimpan ke {filepath}")

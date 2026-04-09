@@ -1,14 +1,20 @@
 # Pemodelan Penurunan Tingkat Fokus Belajar Mahasiswa Berdasarkan Durasi Penggunaan Media Sosial Menggunakan Regresi Eksponensial
 
-**Mata Kuliah**: Pemodelan & Simulasi  
+**Mata Kuliah**: Analisa Numerik (Numerical Analysis)  
 **NIM**: 247007111152  
 **Tanggal**: April 2026
 
 ## 🎯 Objektif
 
-Membangun model regresi eksponensial yang memprediksi penurunan tingkat fokus belajar mahasiswa (`focus_score`) berdasarkan durasi penggunaan media sosial (`social_media_hours`) per hari.
+Menerapkan konsep **Analisa Numerik** untuk membangun model regresi eksponensial menggunakan **linearisasi dan persamaan normal (least squares method)** yang memprediksi penurunan tingkat fokus belajar mahasiswa (`focus_score`) berdasarkan durasi penggunaan media sosial (`social_media_hours`) per hari.
 
-**Model**: `focus_score = a · e^(b · social_media_hours)`
+**Model**: `focus_score = C · e^(b · social_media_hours)`
+
+**Metodologi Utama**:
+- **Linearisasi**: Transformasi `y = C·e^(bx)` → `Y' = a + bx` via `Y' = ln(y), a = ln(C)`
+- **Persamaan Normal**: Sistem 2 persamaan linear diselesaikan dengan rumus analitis
+- **Komponen Tabel**: n, Σx, ΣY', Σx², ΣxY' (wajib ditampilkan dalam laporan)
+- **Metrik Utama**: RMSE (Galat RMS) sebagai indikator kualitas primary
 
 ## 📊 Dataset
 
@@ -413,4 +419,6 @@ jupyter notebook notebooks/analisis_regresi.ipynb
 
 **Last Updated**: April 2026  
 **Status**: Production Ready  
-**Mata Kuliah**: Pemodelan & Simulasi
+**Mata Kuliah**: Analisa Numerik (Numerical Analysis)  
+**Metodologi**: Linearisasi + Persamaan Normal (Least Squares Method)  
+**NIM**: 247007111152

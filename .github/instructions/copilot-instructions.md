@@ -1,272 +1,453 @@
 ---
-description: "Project guidelines for exponential regression modeling of student focus decline based on social media usage. Covers data preprocessing, model fitting (parametric form y=a·e^(bx)), evaluation metrics (R²≥0.40 minimum), code organization, and academic reporting standards."
+description: 'Numerical Analysis project: exponential regression modeling of student focus decline using linearization and least squares method. Core focus on mathematical derivation of normal equations, parametric form y=C·e^(bx), RMS error calculation, and Indonesian language requirements for all outputs and code documentation.'
 ---
 
-# 📋 Exponential Regression Project Instructions
+# 📋 INSTRUKSI PROJECT ANALISA NUMERIK
 
+## Pemodelan Penurunan Tingkat Fokus Belajar Mahasiswa Berdasarkan Durasi Penggunaan Media Sosial Menggunakan Regresi Eksponensial
+
+**Mata Kuliah**: **Analisa Numerik (Numerical Analysis)**  
+**Topik**: Regresi Non-Linear — Regresi Eksponensial  
+**Metode Utama**: Linearisasi Persamaan Eksponensial + Metode Kuadrat Terkecil  
+**NIM**: 247007111152  
 **Project**: Pemodelan Penurunan Tingkat Fokus Belajar Mahasiswa Berdasarkan Durasi Penggunaan Media Sosial Menggunakan Regresi Eksponensial
 
-## 🎯 Core Objective
-
-Build an exponential regression model **`focus_score = a · e^(b · social_media_hours)`** that predicts student learning focus decline as a function of daily social media usage. Variables:
-- **Independent (X)**: `social_media_hours` — daily social media usage (hours)
-- **Dependent (Y)**: `focus_score` — student focus level (0–100 scale estimated)
-- **Target R²**: ≥ 0.40 minimum; ideal ≥ 0.65
-
 ---
 
-## ⚠️ CRITICAL DATA HANDLING RULES
+## 🎯 OBJECTIVE UTAMA — Konteks Analisa Numerik
 
-**Before ANY model fitting, you MUST validate target variables**:
+Menerapkan konsep **Analisa Numerik** — khususnya teknik **linearisasi persamaan non-linear** dan **metode kuadrat terkecil (least squares)** — untuk membangun model regresi eksponensial:
 
-1. **Filter `focus_score` strictly**: `focus_score > 0` (logarithm only works for positive values)
-   ```python
-   df = df[df['focus_score'] > 0]
-   ```
-
-2. **Filter `social_media_hours` validity**: `social_media_hours >= 0` (cannot be negative)
-   ```python
-   df = df[df['social_media_hours'] >= 0]
-   ```
-
-3. **Handle missing values BEFORE filtering**:
-   ```python
-   df = df.dropna(subset=['social_media_hours', 'focus_score'])
-   ```
-
-4. **Detect and remove outliers** using IQR method on both variables
-   - Apply **before** model fitting, not after
-   - Document outlier removal statistics (how many rows removed, thresholds used)
-
-⚠️ **Forgetting this causes**: "math domain error", silent NaN predictions, invalid logarithms
-
----
-
-## 🧮 MODELING METHODOLOGY
-
-### Required: Two Fitting Approaches (Compare Both)
-
-#### **Method 1: Linearization + Least Squares** (baseline)
-Transform `y = a·e^(bx)` → `ln(y) = ln(a) + bx`, then regress:
-```python
-ln_Y = np.log(Y)  # Transform to linear space
-coeffs = np.polyfit(X, ln_Y, 1)  # Returns [b, ln(a)]
-b = coeffs[0]
-a = np.exp(coeffs[1])
+```
+focus_score = C · e^(b · social_media_hours)
 ```
 
-#### **Method 2: SciPy Curve Fitting** (recommended, more robust)
+Dengan:
+
+- **X** (independen): `social_media_hours` — durasi penggunaan media sosial per hari (jam)
+- **Y** (dependen): `focus_score` — tingkat fokus belajar mahasiswa
+- **C** & **b**: Parameter yang dihitung melalui **linearisasi + persamaan normal**
+- **Galat RMS (RMSE)**: Ukuran kualitas model utama (dari Analisa Numerik)
+- **Target RMSE**: Serendah mungkin; R² ≥ 0.40 minimum sebagai indikator kelayakan
+
+### Sub-Objectives:
+
+1. Memahami dan menerapkan **linearisasi**: `y = C·e^(bx)` → `ln(y) = ln(C) + bx`
+2. Menurunkan **persamaan normal** dari metode kuadrat terkecil secara analitik
+3. Menghitung parameter `C` dan `b` dari data menggunakan **rumus analitis**
+4. Mengukur kualitas model dengan **RMSE (Galat RMS), MAE, MSE, R²**
+5. Visualisasi hasil dengan **Data Aktual (Y) vs Kurva Prediksi (Ŷ)** pada satu grafik
+6. Seluruh output (teks cetak, judul grafik, label, komentar code) menggunakan **Bahasa Indonesia**
+
+---
+
+## ⚠️ CRITICAL DATA VALIDATION (WAJIB — Analisa Numerik)
+
+**Sebelum melakukan proses linearisasi, WAJIB validasi data**:
+
+### 1. Filter `focus_score > 0` (CRITICAL untuk Analisa Numerik)
+
+```python
+# focus_score HARUS positif karena akan ditransformasi dengan ln(y)
+df = df[df['focus_score'] > 0]
+```
+
+**Alasan**: Fungsi logaritma natural hanya terdefinisi untuk nilai positif. Jika `focus_score <= 0`, akan terjadi `RuntimeWarning: invalid value in log` dan menghasilkan NaN.
+
+### 2. Filter `social_media_hours >= 0`
+
+```python
+df = df[df['social_media_hours'] >= 0]  # Tidak boleh negatif
+```
+
+### 3. Hapus Missing Values TERLEBIH DAHULU
+
+```python
+df = df.dropna(subset=['social_media_hours', 'focus_score'])
+```
+
+### 4. Penanganan Outlier dengan IQR
+
+Terapkan SEBELUM fitting:
+
+```python
+Q1 = df['focus_score'].quantile(0.25)
+Q3 = df['focus_score'].quantile(0.75)
+IQR = Q3 - Q1
+lower = Q1 - 1.5 * IQR
+upper = Q3 + 1.5 * IQR
+df = df[(df['focus_score'] >= lower) & (df['focus_score'] <= upper)]
+```
+
+**Dokumentasikan**: Berapa banyak row dihapus di setiap tahap (laporan harus mencantumkan ini).
+
+---
+
+## 🧮 METODE PEMODELAN — ANALISA NUMERIK
+
+### METODE 1: Linearisasi + Persamaan Normal (WAJIB — Inti Analisa Numerik)
+
+Ini adalah metode yang **harus dikerjakan dan dipahami** karena merupakan inti materi Analisa Numerik.
+
+#### Langkah 1: Transformasi Logaritma (Linearisasi)
+
+```python
+# Model asli: y = C * e^(b*x)
+# Logaritmisasi: ln(y) = ln(C) + b*x
+# Substitusi: Y' = ln(y), a = ln(C)
+# Bentuk linear: Y' = a + b*x
+
+Y_prime = np.log(Y)  # Y' = ln(Y)
+```
+
+#### Langkah 2: Hitung Komponen Persamaan Normal
+
+```python
+# Diperlukan untuk sistem 2 persamaan:
+n       = len(X)
+sum_x   = np.sum(X)
+sum_Yp  = np.sum(Y_prime)
+sum_x2  = np.sum(X**2)
+sum_xYp = np.sum(X * Y_prime)
+```
+
+#### Langkah 3: Selesaikan Persamaan Normal (Rumus Analitis)
+
+```python
+# Sistem persamaan normal:
+#   n*a + Σx*b = ΣY'
+#   Σx*a + Σx²*b = ΣxY'
+#
+# Solusi (rumus analitis):
+b = (n * sum_xYp - sum_x * sum_Yp) / (n * sum_x2 - sum_x**2)
+a = (sum_Yp - b * sum_x) / n
+
+# Kembalikan ke parameter asli:
+C = np.exp(a)  # C = e^a
+```
+
+**WAJIB tampilkan**: Nilai n, Σx, ΣY', Σx², ΣxY' di laporan (tabel komponen persamaan normal)
+
+### METODE 2: SciPy curve_fit (Pembanding)
+
 ```python
 from scipy.optimize import curve_fit
 
-def exponential_func(x, a, b):
-    return a * np.exp(b * x)
+def fungsi_eksponensial(x, C, b):
+    return C * np.exp(b * x)
 
-popt, pcov = curve_fit(exponential_func, X, Y, 
-                       p0=[max(Y), -0.1],  # Initial guess
-                       maxfev=10000)
-a_opt, b_opt = popt
+popt, pcov = curve_fit(fungsi_eksponensial, X, Y,
+                       p0=[max(Y), -0.1], maxfev=10000)
+C_scipy, b_scipy = popt
 ```
 
-**Comparison table required**: Show both methods' R², RMSE, and parameter values side-by-side.
+**WAJIB buat tabel perbandingan**: Kedua metode dengan metrik C, b, RMSE, MAE, R² berdampingan
 
 ---
 
-## 📊 EVALUATION METRICS (Non-Negotiable)
+## 📊 METRIK EVALUASI — ANALISA NUMERIK
 
-For every model, calculate and report:
+### Metrik Wajib (untuk setiap model):
 
-| Metric | Formula | Acceptance Threshold |
-|--------|---------|----------------------|
-| **R²** | 1 − (SS_res / SS_tot) | ≥ 0.40 minimum, ≥ 0.65 ideal |
-| **RMSE** | √(1/n Σ(y_actual − y_pred)²) | Document value (context-dependent) |
-| **MAE** | mean(\|y_actual − y_pred\|) | Document value |
-| **Residual properties** | Residuals ~ N(0, σ²) visually | Must show residual plot |
+| Metrik               | Formula               | Interpretasi                                                  |
+| -------------------- | --------------------- | ------------------------------------------------------------- |
+| **RMSE (Galat RMS)** | √(1/n Σ(yᵢ - ŷᵢ)²)    | **Metrik utama Analisa Numerik** — semakin kecil semakin baik |
+| **MAE**              | (1/n)·Σ\|yᵢ - ŷᵢ\|    | Rata-rata error absolut (dalam satuan Y)                      |
+| **MSE**              | (1/n)·Σ(yᵢ - ŷᵢ)²     | MSE = RMSE²                                                   |
+| **R²**               | 1 − (SS_res / SS_tot) | Proporsi variansi yang dijelaskan (0–1); ≥0.40 minimum        |
 
-**If R² < 0.35**: Model is insufficient; consider:
-  - Binning data by `social_media_hours` brackets (apply within-bin means)
-  - Segment analysis (by gender/age group)
-  - Adding control variables (multiple regression)
-  - More aggressive outlier removal
+### Interpretasi RMSE dalam Konteks Analisa Numerik:
 
----
+- **RMSE < 5**: Sangat baik (error kecil)
+- **5 ≤ RMSE < 10**: Baik (error sedang)
+- **RMSE ≥ 10**: Cukup (pertimbangkan model alternatif)
 
-## 📁 CODE ORGANIZATION & STRUCTURE
+### Jika R² < 0.35:
 
-Required project layout:
-```
-project-regresi-eksponensial-anum/
-├── data/
-│   └── dataset.csv                    # ±20,000 rows; UTF-8 encoding
-├── notebooks/
-│   └── analisis_regresi.ipynb         # Jupyter notebook (reproducible)
-├── src/
-│   ├── preprocessing.py              # df cleaning, filtering, outlier removal
-│   ├── modeling.py                   # both fitting methods (Method 1 & 2)
-│   └── visualization.py              # plots: scatter+curve, residual, heatmap
-├── output/
-│   ├── figures/                      # PNG/PDF: saved at 150 DPI
-│   │   ├── regresi_eksponensial.png
-│   │   ├── residual_plot.png
-│   │   └── heatmap_korelasi.png
-│   └── hasil_model.txt               # Summary file: a, b, R², RMSE values
-├── laporan/
-│   └── laporan_akhir.docx            # Academic report (≥10 pages)
-└── README.md
-```
-
-**Code standards**:
-- All Python scripts must be **reproducible** (no random seeds left unseeded)
-- Notebook cells **must execute sequentially** without errors
-- Include **docstrings** for custom functions
-- Document data decisions (why you chose specific thresholds for filtering)
+- Data mungkin tidak cocok dengan model eksponensial
+- Coba binning X dan rata-rata Y per bin
+- Bandingkan dengan model linear atau polinomial
+- Lakukan segmentasi data (analisis per subgroup)
 
 ---
 
-## 📈 VISUALIZATION REQUIREMENTS
+## 💬 INTERPRETASI PARAMETER — KONTEKS ANALISA NUMERIK
 
-**Mandatory plots** (saved to `output/figures/` at 150 DPI):
-
-1. **Scatter + Curve Overlay**
-   - X-axis: `social_media_hours`
-   - Y-axis: `focus_score`
-   - Show actual points (alpha=0.3, small size)
-   - Overlay fitted exponential curve (red line, width=2.5)
-   - Legend with equation: `y = {a:.2f}·e^({b:.4f}x)`
-
-2. **Residual Plot**
-   - X-axis: predicted values (`Y_pred`)
-   - Y-axis: residuals (`Y - Y_pred`)
-   - Horizontal line at 0 (reference)
-   - Assess randomness: should show no systematic pattern
-
-3. **Correlation Heatmap**
-   - All numeric columns included
-   - Highlight correlation between `social_media_hours` and `focus_score`
-   - Annotated with correlation coefficients (2 decimal places)
-
-**Optional but recommended**:
-   - Distribution histograms (social_media_hours, focus_score)
-   - Box plots by hourly brackets
-   - Bar chart of mean focus_score by media usage category (low/medium/high)
-
----
-
-## 💬 PARAMETER INTERPRETATION (Must Document)
-
-Write analytical narrative covering:
-
-1. **Baseline focus score** (`a` value): "When `social_media_hours = 0`, the model predicts `focus_score = {a:.2f}`"
-2. **Decay rate** (`b` value): "Focus score decreases by a factor of `e^{b:.4f}` ≈ `.{decay_pct:.1f}%` per additional hour of media usage"
-3. **Critical point analysis**: "Focus score reaches critical level (e.g., 50) at `social_media_hours ≈ {x_critical:.2f}` hours"
-   ```python
-   x_critical = np.log(threshold / a) / b
-   ```
-
----
-
-## 📄 ACADEMIC REPORT STRUCTURE
-
-**Minimum length**: 10 pages (excluding appendix)
+### 1. Parameter C (Konstanta Awal)
 
 ```
-BAB I — PENDAHULUAN
-  1.1 Latar Belakang (problem context + statistics)
-  1.2 Rumusan Masalah (research question)
-  1.3 Tujuan (main + sub-objectives)
-  1.4 Manfaat (practical applications)
-  1.5 Batasan Masalah (scope, limitations)
-
-BAB II — LANDASAN TEORI
-  2.1 Fokus Belajar Mahasiswa (literature on academic focus)
-  2.2 Media Sosial & Dampak Akademik (evidence of distraction)
-  2.3 Regresi Eksponensial (mathematical foundation, forms)
-  2.4 Metrik Evaluasi (R², RMSE, MAE explanations)
-
-BAB III — METODOLOGI
-  3.1 Dataset (source, n=20,000, columns overview)
-  3.2 Tahapan Preprocessing (filtering, outlier removal, decisions)
-  3.3 Teknik Pemodelan (Method 1 & 2 side-by-side)
-  3.4 Tools & Environment (Python, library versions)
-
-BAB IV — HASIL & PEMBAHASAN
-  4.1 EDA Summary (distributions, correlations, patterns)
-  4.2 Model Parameters (a, b values + interpretations)
-  4.3 Akurasi Model (R², RMSE, MAE, comparison table)
-  4.4 Visualisasi (graphs + narrative interpretation)
-  4.5 Analisis Mendalam (critical points, implications, limitations)
-
-BAB V — PENUTUP
-  5.1 Kesimpulan (findings summary, model validity)
-  5.2 Saran (future work, practical recommendations)
-
-DAFTAR PUSTAKA (≥3 academic sources minimum)
-LAMPIRAN (Python code snippets, extended tables)
+C = e^a = [nilai dari hasil fitting]
 ```
 
-**Equation formatting in report**:
+**Interpretasi**:
+
+- Nilai `focus_score` saat `social_media_hours = 0` (baseline, tanpa media sosial)
+- Artinya: "Tanpa penggunaan media sosial, tingkat fokus mahasiswa diprediksi sebesar {C:.2f}"
+
+### 2. Parameter b (Laju Perubahan Eksponensial)
+
 ```
-f(x) = a · e^(bx)
+b = [nilai dari hasil fitting, diharapkan negatif]
+```
 
-Dengan:
-- f(x) = focus_score (variabel dependen)
-- x = social_media_hours (variabel independen, jam/hari)
-- a = {nilai dari hasil fitting}
-- b = {nilai dari hasil fitting, nilai negatif diharapkan}
-- e = bilangan Euler (≈ 2.71828)
+**Interpretasi**:
+
+- Jika `b < 0`: Fokus MENURUN secara eksponensial seiring bertambahnya media sosial
+- Faktor perubahan per jam: `e^b = [nilai]`
+- Artinya: "Setiap penambahan 1 jam media sosial, fokus berkali dengan faktor {e^b:.4f} dari nilai sebelumnya"
+- Atau: "Fokus berkurang sekitar {(1-e^b)\*100:.1f}% per jam tambahan media sosial"
+
+### 3. Analisis Titik Kritis
+
+```python
+# Pada jam berapa fokus_score mencapai level kritis (misalnya 50)?
+x_kritis = np.log(threshold / C) / b
+```
+
+**Interpretasi**:
+
+- "Tingkat fokus mencapai level {threshold} pada saat penggunaan media sosial sekitar {x_kritis:.2f} jam per hari"
+- "Rekomendasi: Mahasiswa harus membatasi penggunaan media sosial tidak lebih dari {x_kritis:.1f} jam per hari untuk menjaga fokus"
+
+---
+
+## 📄 STRUKTUR LAPORAN ANALISA NUMERIK
+
+**Minimum**: 10 halaman (tidak termasuk cover & daftar isi)
+
+### BAB I — PENDAHULUAN
+
+- 1.1 Latar Belakang (fenomena media sosial, dampak fokus belajar)
+- 1.2 Rumusan Masalah (bagaimana hubungan?, bagaimana membangun model Analisa Numerik?)
+- 1.3 Tujuan
+- 1.4 Manfaat
+- 1.5 Batasan Masalah
+
+### BAB II — LANDASAN TEORI (≥2 halaman)
+
+**PENTING — Derivasi matematis WAJIB ada di sini:**
+
+- 2.1 Konsep Regresi dalam Analisa Numerik (pencocokan kurva, linear vs non-linear)
+- 2.2 Regresi Eksponensial (bentuk: y = C·e^(bx), aplikasi)
+- **2.3 LINEARISASI PERSAMAAN EKSPONENSIAL** (derivasi lengkap)
+  ```
+  y = C·e^(bx)
+  ln(y) = ln(C) + b·x
+  Y' = a + b·x    [dimana Y' = ln(y), a = ln(C)]
+  ```
+- **2.4 METODE KUADRAT TERKECIL**
+  - Fungsi error: R = Σ(Y'ᵢ - a - bxᵢ)²
+  - Penurunan (turunan parsial ∂R/∂a, ∂R/∂b)
+- **2.5 PERSAMAAN NORMAL**
+  - Sistem 2 persamaan linear
+  - Rumus analitis: b = ..., a = ...
+- 2.6 Galat RMS (RMSE) sebagai metrik Analisa Numerik
+- 2.7 Metrik tambahan (MAE, R²)
+
+### BAB III — METODOLOGI
+
+- 3.1 Dataset (sumber, n=20.000, deskripsi kolom)
+- 3.2 Variabel (X = social_media_hours, Y = focus_score)
+- 3.3 Tahapan Preprocessing (filtering, outlier removal — dengan jumlah row dihapus)
+- **3.4 Algoritma Regresi Eksponensial** (flowchart atau pseudocode)
+- 3.5 Tools (Python, library: pandas, numpy, scipy, sklearn, matplotlib)
+
+### BAB IV — HASIL & PEMBAHASAN (±3 halaman, PALING PENTING)
+
+- 4.1 Eksplorasi Data (statistik deskriptif, distribusi, korelasi)
+- 4.2 Proses Linearisasi (tabel komponen persamaan normal: n, Σx, ΣY', Σx², ΣxY')
+- **4.3 Hasil Persamaan Normal** (tampilkan sistem persamaan dengan nilai nyata, proses solusi)
+- 4.4 Parameter Model (C, b dengan interpretasi)
+- 4.5 Perbandingan Metode Linearisasi vs SciPy (tabel evaluasi)
+- 4.6 Evaluasi Akurasi (RMSE, MAE, R² dengan penafsiran)
+- **4.7 Visualisasi** (semua gambar dari output/figures/ dengan caption)
+  - Scatter + kurva regresi
+  - Proses linearisasi (sebelum/sesudah)
+  - Residual plot
+  - **Data Aktual (Y) vs Kurva Prediksi (Ŷ)** — WAJIB ada!
+- 4.8 Analisis Titik Kritis
+- 4.9 Pembahasan (makna parameter, validitas model)
+
+### BAB V — PENUTUP
+
+- 5.1 Kesimpulan (apakah model berhasil? Apakah R² ≥ 0.40?)
+- 5.2 Saran (rekomendasi praktis, penelitian lanjutan)
+
+### DAFTAR PUSTAKA
+
+Minimal 4 sumber dari buku Analisa Numerik:
+
+- Chapra, S.C. & Canale, R.P. (2015). _Numerical Methods for Engineers_
+- Munir, R. (2010). _Metode Numerik_
+- Burden, R.L. & Faires, J.D. (2011). _Numerical Analysis_
+- Walpole et al. (2012). _Probability & Statistics for Engineers_
+
+### LAMPIRAN
+
+- Kode Python lengkap
+- Tabel komponen persamaan normal (subset 10-20 titik data)
+- Grafik tambahan
+
+---
+
+## ✅ CHECKLIST PROGRES PROJECT
+
+### Fase Validasi Data
+
+- [ ] `focus_score > 0` difilter (CRITICAL untuk logaritma)
+- [ ] `social_media_hours >= 0` difilter
+- [ ] Missing values dihapus
+- [ ] Outlier dihapus dengan IQR
+- [ ] n ≥ 18.000 setelah cleaning
+
+### Fase Analisa Numerik — Metode 1 (Linearisasi)
+
+- [ ] `Y' = ln(Y)` dihitung
+- [ ] Komponen persamaan normal dihitung (n, Σx, ΣY', Σx², ΣxY')
+- [ ] Parameter `b` dihitung dengan rumus analitis
+- [ ] Parameter `a` dihitung
+- [ ] Parameter `C = e^a` dihitung
+- [ ] Persamaan diformulasikan: `focus_score = C · e^(b · social_media_hours)`
+- [ ] RMSE dihitung untuk Metode 1
+- [ ] MAE, R² dihitung
+
+### Fase Metode 2 (Pembanding)
+
+- [ ] SciPy `curve_fit` dijalankan
+- [ ] RMSE, MAE, R² dihitung untuk Metode 2
+- [ ] Tabel perbandingan (C, b, RMSE, MAE, R²) dibuat
+
+### Fase Visualisasi (Wajib Bahasa Indonesia)
+
+- [ ] Scatter + kurva regresi (dengan label "Data Aktual" dan "Kurva Prediksi")
+- [ ] **Grafik Data Aktual (Y) vs Kurva Prediksi (Ŷ)** berdampingan (WAJIB)
+- [ ] Grafik proses linearisasi sebelum/sesudah
+- [ ] Residual plot
+- [ ] Heatmap korelasi
+- [ ] Semua judul & label grafik berbahasa Indonesia
+- [ ] Semua disimpan di `output/figures/` (DPI 150)
+
+### Fase Dokumentasi Kode
+
+- [ ] Semua komentar Python berbahasa Indonesia
+- [ ] Nama variabel deskriptif berbahasa Indonesia
+- [ ] Output `print()` berbahasa Indonesia
+- [ ] File `output/hasil_model.txt` tersimpan
+
+### Fase Laporan (Analisa Numerik)
+
+- [ ] BAB I–II selesai dengan derivasi matematis lengkap
+- [ ] BAB III–IV selesai dengan tabel komponen persamaan normal
+- [ ] Tabel perbandingan Metode 1 vs 2 dimasukkan
+- [ ] Semua grafik dimasukkan ke laporan dengan caption
+- [ ] Persamaan y = C·e^(bx) ditulis formal di laporan
+- [ ] Daftar pustaka (≥4 sumber Analisa Numerik)
+- [ ] Laporan ≥10 halaman
+- [ ] Laporan disimpan di `laporan/laporan_akhir.docx`
+
+---
+
+## ⚠️ POTENSI MASALAH & SOLUSI
+
+| Masalah                                         | Penyebab                                           | Solusi                                                          |
+| ----------------------------------------------- | -------------------------------------------------- | --------------------------------------------------------------- |
+| `RuntimeError: invalid value in log`            | Ada `focus_score <= 0` yang tidak difilter         | Filter `df[df['focus_score'] > 0]` TERLEBIH DAHULU sebelum ln() |
+| `curve_fit` tidak konvergen                     | Initial guess `p0` buruk atau maxfev terlalu kecil | Coba `p0=[max(Y), -0.5]` atau `maxfev=50000`                    |
+| R² < 0.35 (jauh di bawah threshold)             | Data mungkin tidak mengikuti pola eksponensial     | Bandingkan dengan model linear; coba binning X                  |
+| RMSE sangat besar (> 20)                        | Model underfitting atau ada outlier ekstrem        | Terapkan IQR filtering lebih ketat (gunakan 1.0 bukan 1.5)      |
+| Parameter `b` positif (tidak sesuai ekspektasi) | Data tidak menunjukkan tren penurunan              | Periksa scatter plot awal; validasi data source                 |
+| Residual plot menunjukkan pola sistematis       | Model bias atau pola non-eksponensial dominan      | Pertimbangkan polynomial fit sebagai pembanding                 |
+| Laporan tidak mencantumkan derivasi matematis   | Lupa bahwa ini adalah mata kuliah ANALISA NUMERIK  | Tambahkan derivasi persamaan normal lengkap di BAB II           |
+| Grafik menggunakan Bahasa Inggris               | Instruksi project mensyaratkan Bahasa Indonesia    | Ubah semua label ke Bahasa Indonesia                            |
+
+---
+
+## 🇮🇩 KETENTUAN BAHASA (WAJIB)
+
+> **Semua output program dan dokumentasi kode HARUS menggunakan Bahasa Indonesia.**
+
+### 1. Output Program (teks yang ditampilkan ke console)
+
+```python
+# ✅ BENAR
+print("Model berhasil dilatih.")
+plt.title('Tingkat Fokus Belajar vs Durasi Media Sosial')
+plt.xlabel('Durasi Penggunaan Media Sosial (jam/hari)')
+
+# ❌ SALAH
+print("Model trained successfully.")
+plt.title('Focus Score vs Social Media Hours')
+plt.xlabel('Social Media Hours (hours/day)')
+```
+
+### 2. Komentar dalam Kode Python
+
+```python
+# ✅ BENAR
+# Hitung jumlah data
+jumlah_data = len(X)
+
+# Transformasi logaritma natural untuk linearisasi
+nilai_ln_y = np.log(Y)
+
+# ❌ SALAH
+# Calculate number of data points
+n_data = len(X)
+
+# Log transformation
+log_y = np.log(Y)
+```
+
+### 3. Nama Variabel Deskriptif
+
+```python
+# ✅ BENAR (untuk variabel deskriptif di domain project)
+komponen_persamaan_normal = {...}
+parameter_C = ...
+parameter_b = ...
+galat_RMS = ...
+
+# ❌ SALAH
+normal_eq_components = {...}
+param_C = ...
+param_b = ...
+error_RMS = ...
+
+# CATATAN: Nama fungsi/metode library tetap English (np.log, pd.read_csv, plt.scatter)
 ```
 
 ---
 
-## ✅ DELIVERY CHECKLIST
+## 🔗 REFERENSI BOOK ANALISA NUMERIK (Wajib Dibaca untuk Memahami Project)
 
-- [ ] **Data**: Dataset loaded, validated (n ≥ 18,000 after cleaning)
-- [ ] **Preprocessing**: Missing values, outliers handled; decisions documented
-- [ ] **EDA**: Heatmap + scatter plot generated
-- [ ] **Method 1**: Linearization fitting complete; R² calculated
-- [ ] **Method 2**: SciPy curve_fit complete; R² calculated
-- [ ] **Comparison**: Table showing both methods' results
-- [ ] **Prediction**: Y_pred generated on original (or test subset)
-- [ ] **Metrics**: MAE, MSE, RMSE, R² all calculated and reported
-- [ ] **Visualizations**: 3 mandatory plots + 1+ optional plots; saved to `output/figures/`
-- [ ] **Interpretation**: Parameter meanings documented narratively
-- [ ] **Code**: Notebook/scripts reproducible; no hardcoded paths
-- [ ] **Report**: ≥10 pages with all BAB sections; equations formatted professionally
-- [ ] **Appendix**: Key code snippets included in report
-- [ ] **Final deliverable**: All outputs in `output/` and `laporan/`
+1. **Chapra, S.C. & Canale, R.P.** (2015). _Numerical Methods for Engineers_. 7th Edition. McGraw-Hill.
+   - Chapter 17–18: Least Squares Regression
+2. **Munir, R.** (2010). _Metode Numerik_. Informatika Bandung.
+   - Chapter 7: Pencocokan Kurva (Curve Fitting)
+3. **Burden, R.L. & Faires, J.D.** (2011). _Numerical Analysis_. 9th Edition. Brooks/Cole.
+   - Chapter 8: Approximation Theory
+
+4. **Walpole, R.E., Myers, R.H., Myers, S.L.** (2012). _Probability & Statistics for Engineers and Scientists_. 9th Edition. Pearson.
+   - Chapter 12: Regression
 
 ---
 
-## 🚨 COMMON PITFALLS TO AVOID
+## 📅 ESTIMASI WAKTU PENGERJAAN
 
-| Pitfall | Fix |
-|---------|-----|
-| "ValueError: math domain error" during ln() | Filter `focus_score > 0` BEFORE linearization |
-| Curve fitting "maxfev exceeded" or no convergence | Check initial guess `p0=[max(Y), -0.1]`; expand `maxfev` to 50000 |
-| R² = 0.15 (far too low) | Data may not follow exponential pattern; try binning, segmentation, or multiple regression |
-| Residual plot shows clear trend | Model is biased; consider polynomial or spline fit instead of exponential |
-| "focus_score" has extreme outliers (0, 100+) | Validate data source; apply stricter IQR filtering (1.5→1.0) |
-| Graphs doesn't appear in notebook | Ensure `%matplotlib inline` at top; use `plt.show()` |
-| Report lacks academic rigor | Add citations from Google Scholar; reference dataset context |
-
----
-
-## 🔗 REFERENCE LINKS IN PROJECT
-
-- **Full specification**: Review `INSTRUKSI_PROJECT.pdf` or original instructions document for complete methodology
-- **Dataset location**: `data/dataset.csv`
-- **Python libraries**: pandas, numpy, scipy, scikit-learn, matplotlib, seaborn (install via `pip install -r requirements.txt` if available)
-
-## 📞 When in Doubt
-
-1. **Data handling doubt?** → Reread the filtering rules (section with red warning box)
-2. **Model fitting doubt?** → Implement BOTH Method 1 and Method 2, compare
-3. **Visualization doubt?** → Follow the mandatory plots checklist exactly
-4. **Report doubt?** → Use the BAB structure as rigid template; fill each section systematically
+| Fase                                           | Estimasi       |
+| ---------------------------------------------- | -------------- |
+| Setup environment + EDA + preprocessing        | 3–4 jam        |
+| Metode 1 (linearisasi manual + rumus analitis) | 2–3 jam        |
+| Metode 2 (SciPy) + evaluasi perbandingan       | 1 jam          |
+| Visualisasi lengkap (5 grafik)                 | 2 jam          |
+| Interpretasi & analisis                        | 1–2 jam        |
+| Penulisan laporan dengan derivasi matematis    | 6–8 jam        |
+| **Total Estimasi**                             | **~15–20 jam** |
 
 ---
 
+**Versi**: 2.0 — Analisa Numerik Focus  
 **Last Updated**: April 2026  
-**Project Status**: In Development  
-**Mata Kuliah**: Pemodelan & Simulasi  
+**Mata Kuliah**: Analisa Numerik (Numerical Analysis)  
+**Topik Khusus**: Regresi Eksponensial — Linearisasi + Kuadrat Terkecil  
 **NIM**: 247007111152

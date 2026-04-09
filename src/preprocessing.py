@@ -1,8 +1,8 @@
 """
-Data Preprocessing Module
+Modul Preprocessing Data — Analisa Numerik
 
-Functions for cleaning, validating, and preparing data for exponential regression modeling.
-Handles missing values, filtering, outlier detection, and transformation.
+Fungsi untuk membersihkan, validasi, dan persiapan data untuk pemodelan regresi eksponensial.
+Menangani missing values, filtering, deteksi outlier, dan transformasi data.
 """
 
 import pandas as pd
@@ -12,41 +12,41 @@ from typing import Tuple
 
 def load_and_validate_dataset(filepath: str) -> pd.DataFrame:
     """
-    Load CSV dataset and perform initial validation.
+    Load dataset CSV dan lakukan validasi awal.
     
     Args:
-        filepath (str): Path to the CSV dataset file
+        filepath (str): Path ke file CSV dataset
         
     Returns:
-        pd.DataFrame: Loaded dataset
+        pd.DataFrame: Dataset yang telah di-load
         
     Raises:
-        FileNotFoundError: If file does not exist
-        ValueError: If required columns are missing
+        FileNotFoundError: Jika file tidak ditemukan
+        ValueError: Jika kolom yang diperlukan tidak ada
     """
     df = pd.read_csv(filepath)
     
-    # Check required columns
+    # Cek kolom yang diperlukan
     required_cols = ['social_media_hours', 'focus_score']
     missing_cols = [col for col in required_cols if col not in df.columns]
     if missing_cols:
-        raise ValueError(f"Missing required columns: {missing_cols}")
+        raise ValueError(f"Kolom yang hilang: {missing_cols}")
     
-    print(f"Dataset loaded: {df.shape[0]} rows × {df.shape[1]} columns")
+    print(f"Dataset berhasil di-load: {df.shape[0]} baris × {df.shape[1]} kolom")
     return df
 
 
 def remove_missing_values(df: pd.DataFrame, subset: list = None) -> pd.DataFrame:
     """
-    Remove rows with missing values in specified columns.
+    Hapus baris dengan missing values di kolom yang ditentukan.
     
     Args:
         df (pd.DataFrame): Input dataframe
-        subset (list): Columns to check for missing values.
+        subset (list): Kolom yang dicek untuk missing values.
                       Default: ['social_media_hours', 'focus_score']
         
     Returns:
-        pd.DataFrame: Cleaned dataframe
+        pd.DataFrame: Dataframe yang telah dibersihkan
     """
     if subset is None:
         subset = ['social_media_hours', 'focus_score']
@@ -55,34 +55,34 @@ def remove_missing_values(df: pd.DataFrame, subset: list = None) -> pd.DataFrame
     df_clean = df.dropna(subset=subset)
     rows_removed = rows_before - len(df_clean)
     
-    print(f"Missing values: {rows_removed} rows removed ({rows_removed/rows_before*100:.2f}%)")
+    print(f"Missing values: {rows_removed} baris dihapus ({rows_removed/rows_before*100:.2f}%)")
     return df_clean
 
 
 def filter_valid_values(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Filter dataset to keep only valid values for exponential regression.
+    Filter dataset untuk menyimpan hanya nilai yang valid untuk regresi eksponensial.
     
-    CRITICAL RULES:
-    - focus_score > 0 (required for logarithmic transformation)
-    - social_media_hours >= 0 (cannot be negative)
+    ATURAN KRITIS (WAJIB untuk Analisa Numerik):
+    - focus_score > 0 (diperlukan untuk transformasi logaritma)
+    - social_media_hours >= 0 (tidak boleh negatif)
     
     Args:
         df (pd.DataFrame): Input dataframe
         
     Returns:
-        pd.DataFrame: Filtered dataframe with valid values only
+        pd.DataFrame: Dataframe yang difilter dengan nilai valid saja
     """
     rows_before = len(df)
     
-    # Filter focus_score > 0
+    # Filter focus_score > 0 (CRITICAL untuk ln())
     df_valid = df[df['focus_score'] > 0].copy()
     
     # Filter social_media_hours >= 0
     df_valid = df_valid[df_valid['social_media_hours'] >= 0].copy()
     
     rows_removed = rows_before - len(df_valid)
-    print(f"Validity filter: {rows_removed} rows removed for invalid values ({rows_removed/rows_before*100:.2f}%)")
+    print(f"Filter validitas: {rows_removed} baris dihapus karena nilai tidak valid ({rows_removed/rows_before*100:.2f}%)")
     
     return df_valid
 
@@ -90,16 +90,16 @@ def filter_valid_values(df: pd.DataFrame) -> pd.DataFrame:
 def detect_outliers_iqr(df: pd.DataFrame, columns: list = None, 
                         iqr_multiplier: float = 1.5) -> pd.DataFrame:
     """
-    Detect and remove outliers using Interquartile Range (IQR) method.
+    Deteksi dan hapus outlier menggunakan metode Interquartile Range (IQR).
     
     Args:
         df (pd.DataFrame): Input dataframe
-        columns (list): Columns to apply outlier detection.
+        columns (list): Kolom untuk deteksi outlier.
                        Default: ['social_media_hours', 'focus_score']
-        iqr_multiplier (float): IQR multiplier for threshold (default: 1.5)
+        iqr_multiplier (float): Pengali IQR untuk threshold (default: 1.5)
         
     Returns:
-        pd.DataFrame: Dataframe with outliers removed
+        pd.DataFrame: Dataframe dengan outlier telah dihapus
     """
     if columns is None:
         columns = ['social_media_hours', 'focus_score']
@@ -118,49 +118,49 @@ def detect_outliers_iqr(df: pd.DataFrame, columns: list = None,
         outliers = ((df_clean[col] < lower_bound) | (df_clean[col] > upper_bound)).sum()
         df_clean = df_clean[(df_clean[col] >= lower_bound) & (df_clean[col] <= upper_bound)]
         
-        print(f"Column '{col}': {outliers} outliers removed (bounds: [{lower_bound:.2f}, {upper_bound:.2f}])")
+        print(f"Kolom '{col}': {outliers} outlier dihapus (batas: [{lower_bound:.2f}, {upper_bound:.2f}])")
     
     rows_removed = rows_before - len(df_clean)
-    print(f"Total outliers removed: {rows_removed} rows ({rows_removed/rows_before*100:.2f}%)")
+    print(f"Total outlier dihapus: {rows_removed} baris ({rows_removed/rows_before*100:.2f}%)")
     
     return df_clean
 
 
 def preprocess_pipeline(filepath: str, verbose: bool = True) -> Tuple[np.ndarray, np.ndarray, pd.DataFrame]:
     """
-    Complete preprocessing pipeline: load → validate → filter → remove outliers.
+    Pipeline preprocessing lengkap: load → validasi → filter → hapus outlier.
     
     Args:
-        filepath (str): Path to CSV file
-        verbose (bool): Print progress messages
+        filepath (str): Path ke file CSV
+        verbose (bool): Tampilkan pesan progress
         
     Returns:
         Tuple[np.ndarray, np.ndarray, pd.DataFrame]: 
             - X: social_media_hours (numpy array)
             - Y: focus_score (numpy array)
-            - df_clean: Cleaned dataframe
+            - df_clean: Dataframe yang telah dibersihkan
     """
     print("=" * 60)
-    print("PREPROCESSING PIPELINE")
+    print("PIPELINE PREPROCESSING")
     print("=" * 60)
     
-    # Step 1: Load
+    # Langkah 1: Load
     df = load_and_validate_dataset(filepath)
     
-    # Step 2: Remove missing
+    # Langkah 2: Hapus missing values
     df = remove_missing_values(df)
     
-    # Step 3: Filter valid values (CRITICAL)
+    # Langkah 3: Filter nilai valid (CRITICAL)
     df = filter_valid_values(df)
     
-    # Step 4: Remove outliers
+    # Langkah 4: Hapus outlier
     df = detect_outliers_iqr(df)
     
-    # Extract X and Y
+    # Ekstrak X dan Y
     X = df['social_media_hours'].values
     Y = df['focus_score'].values
     
-    print(f"\nFinal dataset: {len(X)} rows")
+    print(f"\nDataset final: {len(X)} baris")
     print(f"X (social_media_hours): min={X.min():.2f}, max={X.max():.2f}, mean={X.mean():.2f}")
     print(f"Y (focus_score): min={Y.min():.2f}, max={Y.max():.2f}, mean={Y.mean():.2f}")
     print("=" * 60)
@@ -170,12 +170,12 @@ def preprocess_pipeline(filepath: str, verbose: bool = True) -> Tuple[np.ndarray
 
 def get_summary_statistics(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Get descriptive statistics for the dataset.
+    Dapatkan statistik deskriptif untuk dataset.
     
     Args:
         df (pd.DataFrame): Input dataframe
         
     Returns:
-        pd.DataFrame: Summary statistics
+        pd.DataFrame: Statistik ringkas
     """
     return df.describe()

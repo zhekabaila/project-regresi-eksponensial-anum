@@ -1,23 +1,23 @@
 ============================================================
-EXPONENTIAL REGRESSION MODEL RESULTS
+HASIL MODEL REGRESI EKSPONENSIAL
 ============================================================
 
-MODEL EQUATION
+PERSAMAAN MODEL
 ------------------------------------------------------------
-focus_score = 64.489405 * e^(-0.000175 * social_media_hours)
+focus_score = 64.008750 * e^(-0.001204 * social_media_hours)
 
-PARAMETERS
+PARAMETER
 ------------------------------------------------------------
-a = 64.489405
-b = -0.000175
-Dataset size = 20000
+C = 64.008750
+b = -0.001204
+Jumlah data = 49
 
-EVALUATION METRICS
+METRIK EVALUASI
 ------------------------------------------------------------
-MAE      = 17.454976
-MSE      = 407.054531
-RMSE     = 20.175592
-R²       = 0.000002
+MAE      = 19.514638
+MSE      = 484.828880
+RMSE     = 22.018830
+R2       = 0.000058
 
 ============================================================
-Generated: April 2026
+Dihasilkan: April 2026
