@@ -21,10 +21,10 @@ ENV/
 # data/*.xlsx
 
 # Output files (keep output folder, but ignore large files)
-*.png
-*.pdf
-*.jpg
-*.jpeg
+# *.png
+# *.pdf
+# *.jpg
+# *.jpeg
 
 # IDE
 .vscode/

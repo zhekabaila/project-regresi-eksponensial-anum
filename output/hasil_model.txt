@@ -4,43 +4,20 @@ EXPONENTIAL REGRESSION MODEL RESULTS
 
 MODEL EQUATION
 ------------------------------------------------------------
-focus_score = a * e^(b * social_media_hours)
+focus_score = 64.489405 * e^(-0.000175 * social_media_hours)
 
 PARAMETERS
 ------------------------------------------------------------
-a = [nilai akan diisi setelah fitting]
-b = [nilai akan diisi setelah fitting]
-Dataset size = [jumlah data setelah cleaning]
+a = 64.489405
+b = -0.000175
+Dataset size = 20000
 
 EVALUATION METRICS
 ------------------------------------------------------------
-MAE   = [hasil akan diisi]
-MSE   = [hasil akan diisi]
-RMSE  = [hasil akan diisi]
-R²    = [hasil akan diisi]
-
-METHOD COMPARISON
-------------------------------------------------------------
-Method 1 (Linearization):
-  - a = [value]
-  - b = [value]
-  - R² = [value]
-
-Method 2 (SciPy Curve Fitting):
-  - a = [value]
-  - b = [value]
-  - R² = [value]
-
-RECOMMENDED METHOD: [Method 1 / Method 2]
-
-INTERPRETATION
-------------------------------------------------------------
-[Parameter meanings will be added after fitting]
-
-Critical Point Analysis (focus_score = 50):
-  social_media_hours ≈ [value] hours
+MAE      = 17.454976
+MSE      = 407.054531
+RMSE     = 20.175592
+R²       = 0.000002
 
 ============================================================
 Generated: April 2026
-Student ID: 247007111152
-Mata Kuliah: Pemodelan & Simulasi
